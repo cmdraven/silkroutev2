@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silk Route - Anonymous File Sharing</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+          --matrix-green: #00ff41;
+          --dark-bg: #000000;
+          --darker-bg: #0a0a12;
+          --glow: 0 0 5px var(--matrix-green);
+        }
+
+        body {
+          background-color: var(--dark-bg);
+          color: var(--matrix-green);
+          font-family: 'Courier New', monospace;
+          line-height: 1.6;
+          padding: 20px;
+          max-width: 800px;
+          margin: 0 auto;
+          overflow-x: hidden;
+        }
+
+        /* Terminal-like header */
+        header {
+          border-bottom: 1px solid var(--matrix-green);
+          padding-bottom: 10px;
+          margin-bottom: 30px;
+          position: relative;
+          overflow: hidden;
+        }
+
+        header::after {
+          content: ">";
+          position: absolute;
+          right: 0;
+          bottom: 10px;
+          animation: blink 1s step-end infinite;
+        }
+
+        h1, h2, h3 {
+          text-shadow: var(--glow);
+          letter-spacing: 2px;
+        }
+
+        h1 {
+          font-size: 2.5rem;
+          margin-bottom: 0.5rem;
+          position: relative;
+        }
+
+        h1::before {
+          content: "root@silkroute:~$ ";
+          font-size: 1rem;
+          position: absolute;
+          top: -20px;
+          left: 0;
+          opacity: 0.7;
+        }
+
+        /* Input styling */
+        input, button, textarea {
+          background-color: var(--darker-bg);
+          color: var(--matrix-green);
+          border: 1px solid var(--matrix-green);
+          padding: 8px 12px;
+          font-family: 'Courier New', monospace;
+          margin: 5px 0;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        input:focus, button:focus {
+          outline: none;
+          box-shadow: var(--glow);
+        }
+
+        button {
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s;
+          margin-top: 10px;
+        }
+
+        button:hover {
+          background-color: rgba(0, 255, 65, 0.1);
+          text-shadow: var(--glow);
+        }
+
+        button::after {
+          content: "_";
+          position: absolute;
+          right: 5px;
+          animation: blink 1s step-end infinite;
+        }
+
+        /* File cards */
+        .file-card {
+          background-color: rgba(13, 2, 8, 0.7);
+          border: 1px solid var(--matrix-green);
+          padding: 15px;
+          margin-bottom: 15px;
+          position: relative;
+          transition: all 0.3s;
+        }
+
+        .file-card:hover {
+          box-shadow: var(--glow);
+        }
+
+        .file-card::before {
+          content: "File_";
+          position: absolute;
+          top: -10px;
+          left: 10px;
+          background-color: var(--dark-bg);
+          padding: 0 5px;
+          font-size: 0.8rem;
+        }
+
+        .download-btn button {
+          background-color: transparent;
+          border: 1px solid var(--matrix-green);
+          padding: 5px 15px;
+          margin-top: 10px;
+        }
+
+        /* Progress bar */
+        .progress-bar {
+          background-color: var(--darker-bg);
+          border: 1px solid var(--matrix-green);
+          height: 20px;
+          margin-top: 10px;
+          overflow: hidden;
+        }
+
+        .progress {
+          height: 100%;
+          background-color: var(--matrix-green);
+          width: 0%;
+          transition: width 0.3s;
+          position: relative;
+        }
+
+        .progress::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent
+          );
+          animation: scan 2s linear infinite;
+        }
+
+        /* Animations */
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+
+        @keyframes scan {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        /* Glitch effect */
+        .glitch {
+          position: relative;
+        }
+
+        .glitch::before, .glitch::after {
+          content: attr(data-text);
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .glitch::before {
+          left: 2px;
+          text-shadow: -2px 0 #ff00c1;
+          animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+          left: -2px;
+          text-shadow: -2px 0 #00fff9;
+          animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+          0% { clip: rect(31px, 9999px, 94px, 0); }
+          20% { clip: rect(112px, 9999px, 76px, 0); }
+          40% { clip: rect(85px, 9999px, 77px, 0); }
+          60% { clip: rect(27px, 9999px, 97px, 0); }
+          80% { clip: rect(64px, 9999px, 98px, 0); }
+          100% { clip: rect(61px, 9999px, 85px, 0); }
+        }
+
+        @keyframes glitch-anim2 {
+          0% { clip: rect(65px, 9999px, 119px, 0); }
+          20% { clip: rect(79px, 9999px, 66px, 0); }
+          40% { clip: rect(101px, 9999px, 114px, 0); }
+          60% { clip: rect(100px, 9999px, 83px, 0); }
+          80% { clip: rect(40px, 9999px, 103px, 0); }
+          100% { clip: rect(124px, 9999px, 132px, 0); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+          body {
+            padding: 10px;
+          }
+        
+          h1 {
+            font-size: 1.8rem;
+          }
+        
+          .file-card {
+            padding: 10px;
+          }
+        }
+
+        /* Additional hacker elements */
+        .terminal-prompt {
+          color: #0f0;
+          margin-bottom: 20px;
+          position: relative;
+          padding-left: 15px;
+        }
+
+        .terminal-prompt::before {
+          content: ">";
+          position: absolute;
+          left: 0;
+          animation: blink 1s step-end infinite;
+        }
+
+        .file-path {
+          color: #555;
+          font-size: 0.9rem;
+        }
+
+        .file-size {
+          color: #0af;
+          font-size: 0.8rem;
+        }
+
+        .upload-section {
+          border: 1px dashed var(--matrix-green);
+          padding: 20px;
+          margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 class="glitch" data-text="Silk Route">Silk Route</h1>
+        <p class="terminal-prompt">Anonymous decentralized file sharing, free resource pooling for all. Note that Raven is not responsible for anything happening here</p>
+        
+    </header>
+
+    <div class="upload-section">
+        <h2>Upload File</h2>
+        <input type="file" id="file-input">
+        <div>
+            <label for="description">Description (optional):</label>
+            <input type="text" id="description">
+        </div>
+        <div>
+            <label for="tags">Tags (comma separated):</label>
+            <input type="text" id="tags">
+        </div>
+        <button id="upload-btn">Upload Anonymously</button>
+        <div class="progress-bar" id="upload-progress" style="display: none;">
+            <div class="progress" id="upload-progress-bar"></div>
+        </div>
+    </div>
+
+    <div id="search-section">
+        <h2>Search Files</h2>
+        <input type="text" id="search-input" placeholder="Search by description or tags">
+        <button id="search-btn">Search</button>
+    </div>
+
+    <div id="results">
+        <!-- Files will appear here -->
+    </div>
+
+    <script>
+        // Initialize Supabase (public access)
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Upload file
+        document.getElementById('upload-btn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const description = document.getElementById('description').value;
+            const tags = document.getElementById('tags').value;
+
+            // Show progress bar
+            const progressBar = document.getElementById('upload-progress');
+            const progressBarInner = document.getElementById('upload-progress-bar');
+            progressBar.style.display = 'block';
+
+            try {
+                // Generate unique filename using hash
+                const arrayBuffer = await file.arrayBuffer();
+                const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                const fileExt = file.name.split('.').pop();
+                const storedName = `${hashHex}.${fileExt}`;
+
+                // Check if file already exists
+                const { data: existingFiles } = await supabase
+                    .from('files')
+                    .select('id')
+                    .eq('file_hash', hashHex);
+
+                if (existingFiles.length > 0) {
+                    alert('This file already exists in the system');
+                    return;
+                }
+
+                // Upload to Supabase Storage with progress tracking
+                const { error: uploadError } = await supabase.storage
+                    .from('silk-route-files')
+                    .upload(storedName, file, {
+                        cacheControl: '3600',
+                        upsert: false,
+                        onProgress: (progress) => {
+                            const percent = Math.round(progress.loaded / progress.total * 100);
+                            progressBarInner.style.width = `${percent}%`;
+                        }
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                    .from('silk-route-files')
+                    .getPublicUrl(storedName);
+
+                // Store metadata
+                const { error: dbError } = await supabase
+                    .from('files')
+                    .insert([{
+                        original_name: file.name,
+                        stored_name: storedName,
+                        file_url: urlData.publicUrl,
+                        file_size: file.size,
+                        file_hash: hashHex,
+                        description: description,
+                        tags: tags
+                    }]);
+
+                if (dbError) throw dbError;
+
+                alert('File uploaded successfully!');
+                fileInput.value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('tags').value = '';
+                searchFiles(); // Refresh results
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Upload failed: ' + error.message);
+            } finally {
+                progressBar.style.display = 'none';
+                progressBarInner.style.width = '0%';
+            }
+        });
+
+        // Search files
+        document.getElementById('search-btn').addEventListener('click', searchFiles);
+
+        async function searchFiles() {
+            const searchTerm = document.getElementById('search-input').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p class="terminal-prompt">Loading files...</p>';
+
+            try {
+                let query = supabase
+                    .from('files')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (searchTerm) {
+                    query = query.or(
+                        `description.ilike.%${searchTerm}%,tags.ilike.%${searchTerm}%`
+                    );
+                }
+
+                const { data: files, error } = await query;
+
+                if (error) throw error;
+
+                if (files.length === 0) {
+                    resultsDiv.innerHTML = '<p class="terminal-prompt">No files found</p>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = '';
+                files.forEach(file => {
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'file-card';
+                    fileCard.innerHTML = `
+                        <div class="file-header">
+                            <span class="file-path">/root/files/</span>
+                            <h3>${file.original_name}</h3>
+                        </div>
+                        <p>${file.description || 'No description'}</p>
+                        <p class="file-size">Size: ${formatFileSize(file.file_size)}</p>
+                        <p>Tags: ${file.tags || 'None'}</p>
+                        <p>Uploaded: ${new Date(file.created_at).toLocaleString()}</p>
+                        <a href="${file.file_url}" download="${file.original_name}" class="download-btn">
+                            <button>Download</button>
+                        </a>
+                    `;
+                    resultsDiv.appendChild(fileCard);
+                });
+            } catch (error) {
+                console.error('Search failed:', error);
+                resultsDiv.innerHTML = '<p class="terminal-prompt">Error loading files</p>';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Initial load
+        searchFiles();
+    </script>
+</body>
+</html>
