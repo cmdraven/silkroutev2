@@ -300,8 +300,8 @@
 
     <script>
         // Initialize Supabase (public access)
-        const supabaseUrl = 'YOUR_SUPABASE_URL';
-        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+        const supabaseUrl = 'https://rkkfwycwwaqillajotnh.supabase.co';
+        const supabaseKey = process.env.SUPABASE_KEY;
         const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         // Upload file
